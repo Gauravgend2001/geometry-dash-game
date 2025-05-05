@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Geometry Dash Clone</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #222;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+        #game-container {
+            position: relative;
+            width: 800px;
+            height: 400px;
+            background-color: #111;
+            overflow: hidden;
+        }
+        #player {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background-color: #0af;
+            left: 100px;
+            bottom: 50px;
+            transition: transform 0.1s;
+        }
+        .obstacle {
+            position: absolute;
+            background-color: #f55;
+            bottom: 50px;
+        }
+        .floor {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 50px;
+            background-color: #333;
+            background-image: linear-gradient(90deg, #333 0%, #444 100%);
+        }
+        .ceiling {
+            position: absolute;
+            top: 0;
+            width: 100%;
+            height: 50px;
+            background-color: #333;
+            background-image: linear-gradient(90deg, #333 0%, #444 100%);
+        }
+        .background {
+            position: absolute;
+            top: 50px;
+            width: 100%;
+            height: 300px;
+            background-image: linear-gradient(0deg, #123 0%, #235 100%);
+            z-index: -1;
+        }
+        .stars {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                radial-gradient(white, rgba(255,255,255,.1) 2px, transparent 2px),
+                radial-gradient(white, rgba(255,255,255,.1) 1px, transparent 1px);
+            background-size: 100px 100px, 50px 50px;
+            background-position: 0 0, 25px 25px;
+            animation: starMove 60s linear infinite;
+        }
+        @keyframes starMove {
+            from {background-position: 0 0, 25px 25px;}
+            to {background-position: -2000px 0, -1975px 25px;}
+        }
+        .grid {
+            position: absolute;
+            bottom: 50px;
+            width: 100%;
+            height: 1px;
+            background-color: rgba(255, 255, 255, 0.1);
+            box-shadow: 0 20px 0 rgba(255, 255, 255, 0.1),
+                        0 40px 0 rgba(255, 255, 255, 0.1),
+                        0 60px 0 rgba(255, 255, 255, 0.1),
+                        0 80px 0 rgba(255, 255, 255, 0.1),
+                        0 100px 0 rgba(255, 255, 255, 0.1),
+                        0 120px 0 rgba(255, 255, 255, 0.1),
+                        0 140px 0 rgba(255, 255, 255, 0.1),
+                        0 160px 0 rgba(255, 255, 255, 0.1),
+                        0 180px 0 rgba(255, 255, 255, 0.1),
+                        0 200px 0 rgba(255, 255, 255, 0.1),
+                        0 220px 0 rgba(255, 255, 255, 0.1),
+                        0 240px 0 rgba(255, 255, 255, 0.1),
+                        0 260px 0 rgba(255, 255, 255, 0.1),
+                        0 280px 0 rgba(255, 255, 255, 0.1),
+                        0 300px 0 rgba(255, 255, 255, 0.1);
+        }
+        #score {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-size: 24px;
+            z-index: 10;
+        }
+        #start-screen {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            z-index: 100;
+        }
+        #start-button, #retry-button {
+            padding: 10px 20px;
+            background-color: #0af;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 20px;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: transform 0.1s;
+        }
+        #start-button:hover, #retry-button:hover {
+            transform: scale(1.1);
+        }
+        #game-over {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            z-index: 100;
+        }
+        #final-score {
+            font-size: 36px;
+            margin-bottom: 20px;
+        }
+        .particle {
+            position: absolute;
+            width: 5px;
+            height: 5px;
+            background-color: #0af;
+            border-radius: 50%;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div class="background">
+            <div class="stars"></div>
+            <div class="grid"></div>
+        </div>
+        <div class="ceiling"></div>
+        <div class="floor"></div>
+        <div id="player"></div>
+        <div id="score">Score: 0</div>
+        
+        <div id="start-screen">
+            <h1>Geometry Dash</h1>
+            <p>Press SPACE or click to jump</p>
+            <button id="start-button">Start Game</button>
+        </div>
+        
+        <div id="game-over">
+            <h1>Game Over</h1>
+            <div id="final-score">Score: 0</div>
+            <button id="retry-button">Try Again</button>
+        </div>
+    </div>
+
+    <script>
+        const player = document.getElementById('player');
+        const gameContainer = document.getElementById('game-container');
+        const scoreDisplay = document.getElementById('score');
+        const startScreen = document.getElementById('start-screen');
+        const gameOverScreen = document.getElementById('game-over');
+        const startButton = document.getElementById('start-button');
+        const retryButton = document.getElementById('retry-button');
+        const finalScoreDisplay = document.getElementById('final-score');
+        
+        let isJumping = false;
+        let isGameOver = false;
+        let gameStarted = false;
+        let score = 0;
+        let obstacleSpeed = 5;
+        let obstacleInterval = 1500;
+        let obstacles = [];
+        let jumpHeight = 120;
+        let gravity = 0.6;
+        let velocity = 0;
+        let playerBottom = 50;
+        let gameLoopId;
+        let obstacleTimerId;
+        let scoreTimerId;
+        let rotation = 0;
+        
+        startButton.addEventListener('click', startGame);
+        retryButton.addEventListener('click', restartGame);
+        
+        function startGame() {
+            startScreen.style.display = 'none';
+            gameStarted = true;
+            isGameOver = false;
+            
+            document.addEventListener('keydown', handleKeyDown);
+            document.addEventListener('click', jump);
+            
+            gameLoopId = requestAnimationFrame(gameLoop);
+            obstacleTimerId = setInterval(createObstacle, obstacleInterval);
+            scoreTimerId = setInterval(() => {
+                score++;
+                scoreDisplay.textContent = `Score: ${score}`;
+                
+                // Increase difficulty over time
+                if (score % 20 === 0 && obstacleSpeed < 12) {
+                    obstacleSpeed += 0.5;
+                }
+                if (score % 50 === 0 && obstacleInterval > 800) {
+                    clearInterval(obstacleTimerId);
+                    obstacleInterval -= 100;
+                    obstacleTimerId = setInterval(createObstacle, obstacleInterval);
+                }
+            }, 100);
+        }
+        
+        function restartGame() {
+            gameOverScreen.style.display = 'none';
+            
+            // Reset game state
+            obstacles.forEach(obstacle => {
+                obstacle.remove();
+            });
+            obstacles = [];
+            score = 0;
+            scoreDisplay.textContent = `Score: ${score}`;
+            obstacleSpeed = 5;
+            obstacleInterval = 1500;
+            rotation = 0;
+            playerBottom = 50;
+            velocity = 0;
+            
+            player.style.bottom = `${playerBottom}px`;
+            player.style.transform = `rotate(${rotation}deg)`;
+            
+            startGame();
+        }
+        
+        function handleKeyDown(event) {
+            if (event.code === 'Space') {
+                event.preventDefault();
+                jump();
+            }
+        }
+        
+        function jump() {
+            if (!isJumping && !isGameOver && gameStarted) {
+                isJumping = true;
+                velocity = 10;
+                createParticles(player.offsetLeft + 20, player.offsetTop + 40, 10);
+            }
+        }
+        
+        function gameLoop() {
+            if (!isGameOver) {
+                // Apply gravity
+                velocity -= gravity;
+                playerBottom += velocity;
+                
+                // Floor collision
+                if (playerBottom <= 50) {
+                    playerBottom = 50;
+                    velocity = 0;
+                    isJumping = false;
+                    rotation = 0;
+                }
+                
+                // Ceiling collision
+                if (playerBottom >= gameContainer.offsetHeight - 90) {
+                    playerBottom = gameContainer.offsetHeight - 90;
+                    velocity = -3;
+                }
+                
+                // Update player position
+                player.style.bottom = `${playerBottom}px`;
+                
+                // Rotate player during jump
+                if (isJumping) {
+                    rotation += 9;
+                    if (rotation > 360) rotation = 0;
+                }
+                player.style.transform = `rotate(${rotation}deg)`;
+                
+                // Check collisions
+                checkCollisions();
+                
+                // Move obstacles
+                moveObstacles();
+                
+                gameLoopId = requestAnimationFrame(gameLoop);
+            }
+        }
+        
+        function createObstacle() {
+            if (isGameOver) return;
+            
+            const obstacle = document.createElement('div');
+            obstacle.classList.add('obstacle');
+            gameContainer.appendChild(obstacle);
+            
+            // Random height between 20 and 60
+            let obstacleHeight = Math.floor(Math.random() * 41) + 20;
+            // Random position (top or bottom)
+            let position = Math.random() > 0.5 ? 'bottom' : 'top';
+            
+            if (position === 'top') {
+                obstacle.style.top = '50px';
+                obstacle.style.bottom = 'auto';
+            } else {
+                obstacle.style.bottom = '50px';
+            }
+            
+            obstacle.style.left = `${gameContainer.offsetWidth}px`;
+            obstacle.style.width = `${30}px`;
+            obstacle.style.height = `${obstacleHeight}px`;
+            
+            obstacles.push(obstacle);
+        }
+        
+        function moveObstacles() {
+            obstacles.forEach((obstacle, index) => {
+                let obstacleLeft = parseInt(obstacle.style.left);
+                obstacle.style.left = `${obstacleLeft - obstacleSpeed}px`;
+                
+                // Remove obstacles that are off-screen
+                if (obstacleLeft < -50) {
+                    obstacle.remove();
+                    obstacles.splice(index, 1);
+                }
+            });
+        }
+        
+        function checkCollisions() {
+            const playerRect = player.getBoundingClientRect();
+            
+            obstacles.forEach(obstacle => {
+                const obstacleRect = obstacle.getBoundingClientRect();
+                
+                if (
+                    playerRect.right > obstacleRect.left &&
+                    playerRect.left < obstacleRect.right &&
+                    playerRect.bottom > obstacleRect.top &&
+                    playerRect.top < obstacleRect.bottom
+                ) {
+                    gameOver();
+                }
+            });
+        }
+        
+        function gameOver() {
+            isGameOver = true;
+            cancelAnimationFrame(gameLoopId);
+            clearInterval(obstacleTimerId);
+            clearInterval(scoreTimerId);
+            
+            document.removeEventListener('keydown', handleKeyDown);
+            document.removeEventListener('click', jump);
+            
+            createParticles(player.offsetLeft + 20, player.offsetTop + 20, 30);
+            
+            finalScoreDisplay.textContent = `Score: ${score}`;
+            gameOverScreen.style.display = 'flex';
+        }
+        
+        function createParticles(x, y, amount) {
+            for (let i = 0; i < amount; i++) {
+                const particle = document.createElement('div');
+                particle.classList.add('particle');
+                gameContainer.appendChild(particle);
+                
+                // Position at player
+                particle.style.left = `${x}px`;
+                particle.style.top = `${y}px`;
+                
+                // Random velocity
+                const vx = (Math.random() - 0.5) * 10;
+                const vy = (Math.random() - 0.5) * 10;
+                
+                // Random color
+                const colors = ['#0af', '#f55', '#5f5', '#ff5', '#f5f'];
+                particle.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                
+                // Animate particle
+                let opacity = 1;
+                let size = 5;
+                let posX = x;
+                let posY = y;
+                
+                const animateParticle = () => {
+                    if (opacity <= 0) {
+                        particle.remove();
+                        return;
+                    }
+                    
+                    opacity -= 0.05;
+                    size -= 0.1;
+                    posX += vx;
+                    posY += vy;
+                    
+                    particle.style.opacity = opacity;
+                    particle.style.width = `${Math.max(0, size)}px`;
+                    particle.style.height = `${Math.max(0, size)}px`;
+                    particle.style.left = `${posX}px`;
+                    particle.style.top = `${posY}px`;
+                    
+                    requestAnimationFrame(animateParticle);
+                };
+                
+                requestAnimationFrame(animateParticle);
+            }
+        }
+    </script>
+</body>
+</html>
